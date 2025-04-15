@@ -1,14 +1,43 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+
+// Validador personalizado para fecha futura y edad mínima
+function dateValidator(control: AbstractControl): ValidationErrors | null {
+  if (!control.value) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const inputDate = new Date(control.value);
+  
+  // Verificar fecha futura
+  if (inputDate > today) {
+    return { futureDate: true };
+  }
+
+  // Verificar edad mínima (18 años)
+  let age = today.getFullYear() - inputDate.getFullYear();
+  const monthDiff = today.getMonth() - inputDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < inputDate.getDate())) {
+    age--;
+  }
+
+  if (age < 18) {
+    return { minAge: true };
+  }
+
+  return null;
+}
 
 @Component({
   selector: 'app-create-user',
@@ -57,15 +86,25 @@ import { AuthService } from '../../services/auth.service';
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Fecha de nacimiento</mat-label>
-              <input matInput [matDatepicker]="picker" formControlName="dateBirth" required>
+              <input matInput [matDatepicker]="picker" formControlName="dateBirth" required [max]="maxDate">
               <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
+              <mat-hint>Debes tener al menos 18 años para registrarte</mat-hint>
               <mat-error *ngIf="userForm.get('dateBirth')?.hasError('required')">
                 La fecha de nacimiento es requerida
+              </mat-error>
+              <mat-error *ngIf="userForm.get('dateBirth')?.hasError('futureDate')">
+                La fecha de nacimiento no puede ser futura
+              </mat-error>
+              <mat-error *ngIf="userForm.get('dateBirth')?.hasError('minAge')">
+                Debes ser mayor de 18 años para registrarte
               </mat-error>
             </mat-form-field>
 
             <div class="button-container">
+              <button mat-button color="primary" type="button" (click)="goToLogin()">
+                Volver al Login
+              </button>
               <button mat-raised-button color="primary" type="submit" [disabled]="userForm.invalid">
                 Crear Usuario
               </button>
@@ -115,24 +154,31 @@ import { AuthService } from '../../services/auth.service';
 
     .button-container {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       margin-top: 1rem;
     }
   `]
 })
 export class CreateUserComponent {
   userForm: FormGroup;
+  maxDate: Date;
 
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
+    private router: Router,
     private authService: AuthService
   ) {
+    // Calcular la fecha máxima (18 años atrás desde hoy)
+    this.maxDate = new Date();
+    const minYear = this.maxDate.getFullYear() - 18;
+    this.maxDate.setFullYear(minYear);
+
     this.userForm = this.fb.group({
       userId: [''],
       name: ['', Validators.required],
       lastName: ['', Validators.required],
-      dateBirth: ['', Validators.required]
+      dateBirth: ['', [Validators.required, dateValidator]]
     });
 
     const email = this.authService.getStoredEmail();
@@ -167,5 +213,9 @@ export class CreateUserComponent {
         }
       });
     }
+  }
+
+  goToLogin() {
+    this.router.navigate(['/login']);
   }
 } 

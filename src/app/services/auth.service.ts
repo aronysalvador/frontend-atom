@@ -51,18 +51,24 @@ export class AuthService {
     }
   }
 
-  checkUser(email: string): Observable<boolean> {
+  checkUser(email: string): Observable<LoginResponse | null> {
     this.tempEmail = email;
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { userId: email }).pipe(
       map(response => {
-        // Guardar el token
+        // Limpiar cualquier estado anterior
+        this.taskService.clearTasks();
+        
+        // Guardar el token y usuario
         this.setToken(response.token);
         this.currentUser.next(response.user);
-        this.navigateToTasks();
-        return true;
+
+        // Cargar las tareas del usuario
+        this.taskService.getUserTasks(response.user.userId).subscribe();
+        
+        return response;
       }),
       catchError(() => {
-        return of(false);
+        return of(null);
       })
     );
   }
@@ -70,7 +76,7 @@ export class AuthService {
   createUser(userData: Partial<User>): Observable<User> {
     return this.http.post<CreateUserResponse>(this.apiUrl, userData).pipe(
       map(response => {
-        // Guardar el token
+        // Guardar el token y usuario
         this.setToken(response.token);
         this.currentUser.next(response.user);
         return response.user;
@@ -104,10 +110,20 @@ export class AuthService {
   }
 
   logout(): void {
+    // Limpiar el estado del usuario
     this.currentUser.next(null);
     this.tempEmail = null;
+    
+    // Limpiar el token
     this.token.next(null);
-    localStorage.removeItem('token');
-    this.router.navigate(['/login']);
+    localStorage.clear();
+    
+    // Limpiar el estado de las tareas
+    this.taskService.clearTasks();
+    
+    // Navegar al login y forzar un refresh completo
+    this.router.navigate(['/login']).then(() => {
+      window.location.reload();
+    });
   }
 } 

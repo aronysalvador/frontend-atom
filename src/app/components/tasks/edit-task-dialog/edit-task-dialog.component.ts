@@ -26,17 +26,25 @@ import { Task } from '../../../services/task.service';
       <mat-dialog-content>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Título</mat-label>
-          <input matInput formControlName="title" required>
+          <input matInput formControlName="title" required [maxlength]="data.maxLength?.title || 40">
+          <mat-hint align="end">{{taskForm.get('title')?.value?.length || 0}}/{{data.maxLength?.title || 40}}</mat-hint>
           <mat-error *ngIf="taskForm.get('title')?.hasError('required')">
             El título es requerido
+          </mat-error>
+          <mat-error *ngIf="taskForm.get('title')?.hasError('maxlength')">
+            El título no puede exceder {{data.maxLength?.title || 40}} caracteres
           </mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Descripción</mat-label>
-          <textarea matInput formControlName="description" rows="3" required></textarea>
+          <textarea matInput formControlName="description" rows="3" required [maxlength]="data.maxLength?.description || 40"></textarea>
+          <mat-hint align="end">{{taskForm.get('description')?.value?.length || 0}}/{{data.maxLength?.description || 40}}</mat-hint>
           <mat-error *ngIf="taskForm.get('description')?.hasError('required')">
             La descripción es requerida
+          </mat-error>
+          <mat-error *ngIf="taskForm.get('description')?.hasError('maxlength')">
+            La descripción no puede exceder {{data.maxLength?.description || 40}} caracteres
           </mat-error>
         </mat-form-field>
 
@@ -93,12 +101,18 @@ export class EditTaskDialogComponent {
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<EditTaskDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: Partial<Task>
+    @Inject(MAT_DIALOG_DATA) public data: Partial<Task> & { maxLength?: { title: number; description: number } }
   ) {
     this.isNewTask = !data.id;
     this.taskForm = this.fb.group({
-      title: [data.title || '', Validators.required],
-      description: [data.description || '', Validators.required],
+      title: [data.title || '', [
+        Validators.required,
+        Validators.maxLength(data.maxLength?.title || 40)
+      ]],
+      description: [data.description || '', [
+        Validators.required,
+        Validators.maxLength(data.maxLength?.description || 40)
+      ]],
       status: [data.status || 'pending', Validators.required],
       priority: [data.priority || 'medium', Validators.required]
     });

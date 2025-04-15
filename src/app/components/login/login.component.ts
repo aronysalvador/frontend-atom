@@ -114,9 +114,9 @@ export class LoginComponent {
       const email = this.loginForm.get('email')?.value;
       
       this.authService.checkUser(email).subscribe({
-        next: (exists) => {
+        next: (response) => {
           this.loading = false;
-          if (exists) {
+          if (response !== null) {
             this.authService.navigateToTasks();
           } else {
             this.showCreateUserDialog();

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -12,6 +12,7 @@ import { TaskService, Task } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
 import { DeleteTaskDialogComponent } from './delete-task-dialog/delete-task-dialog.component';
 import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.component';
+import { switchMap, of, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-tasks',
@@ -33,7 +34,7 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
           <div class="header-left">
             <img src="assets/logo-atom-chat.png" alt="Atom Logo" class="logo">
             <div class="welcome-message">
-              <h2>Bienvenido, {{userName}}</h2>
+              <h2>Bienvenido(a), {{userName}}</h2>
             </div>
           </div>
           <div class="header-actions">
@@ -322,10 +323,11 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
     }
   `]
 })
-export class TasksComponent implements OnInit {
+export class TasksComponent implements OnInit, OnDestroy {
   tasks: Task[] = [];
   userName: string = '';
   isLoading: boolean = true;
+  private tasksSubscription?: Subscription;
 
   constructor(
     private taskService: TaskService,
@@ -334,40 +336,31 @@ export class TasksComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.loadUserName();
-  }
-
-  private loadTasks() {
     this.isLoading = true;
-    this.authService.getCurrentUser().subscribe({
-      next: (user) => {
+    
+    // Verificar si hay un token y cargar las tareas
+    const token = localStorage.getItem('token');
+    if (token) {
+      this.authService.getCurrentUser().subscribe(user => {
         if (user) {
-          this.taskService.getUserTasks(user.userId).subscribe({
-            next: (tasks: Task[]) => {
-              this.tasks = tasks;
-              this.isLoading = false;
-            },
-            error: (error: any) => {
-              console.error('Error loading tasks:', error);
-              this.isLoading = false;
-            }
+          this.userName = `${user.name} ${user.lastName}`;
+          // Cargar las tareas iniciales
+          this.taskService.getUserTasks(user.userId).subscribe();
+          
+          // Suscribirse a los cambios en las tareas
+          this.tasksSubscription = this.taskService.getTasks().subscribe(tasks => {
+            this.tasks = tasks;
+            this.isLoading = false;
           });
         }
-      },
-      error: (error: any) => {
-        console.error('Error loading user:', error);
-        this.isLoading = false;
-      }
-    });
+      });
+    }
   }
 
-  loadUserName() {
-    this.authService.getCurrentUser().subscribe(user => {
-      if (user) {
-        this.userName = `${user.name} ${user.lastName}`;
-        this.loadTasks();
-      }
-    });
+  ngOnDestroy() {
+    if (this.tasksSubscription) {
+      this.tasksSubscription.unsubscribe();
+    }
   }
 
   formatDate(createdAt: { _seconds: number; _nanoseconds: number }): string {
@@ -445,6 +438,14 @@ export class TasksComponent implements OnInit {
   }
 
   logout() {
+    // Limpiar el estado local
+    this.tasks = [];
+    this.userName = '';
+    this.isLoading = false;
+    if (this.tasksSubscription) {
+      this.tasksSubscription.unsubscribe();
+    }
+    // Llamar al logout del servicio
     this.authService.logout();
   }
 
@@ -455,7 +456,11 @@ export class TasksComponent implements OnInit {
         title: '',
         description: '',
         status: 'pending',
-        priority: 'low'
+        priority: 'low',
+        maxLength: {
+          title: 40,
+          description: 40
+        }
       }
     });
 
@@ -472,9 +477,6 @@ export class TasksComponent implements OnInit {
             };
 
             this.taskService.createTask(newTask).subscribe({
-              next: (createdTask) => {
-                this.tasks = [...this.tasks, createdTask];
-              },
               error: (error) => {
                 console.error('Error creating task:', error);
               }
