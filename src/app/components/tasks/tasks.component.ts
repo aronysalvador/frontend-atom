@@ -7,6 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TaskService, Task } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
 import { DeleteTaskDialogComponent } from './delete-task-dialog/delete-task-dialog.component';
@@ -22,14 +23,18 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
     MatIconModule,
     MatChipsModule,
     MatButtonModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatProgressSpinnerModule
   ],
   template: `
     <div class="tasks-container">
       <mat-card class="tasks-card">
         <mat-card-header>
-          <div class="welcome-message">
-            <h2>Bienvenido, {{userName}}</h2>
+          <div class="header-left">
+            <img src="assets/logo-atom-chat.png" alt="Atom Logo" class="logo">
+            <div class="welcome-message">
+              <h2>Bienvenido, {{userName}}</h2>
+            </div>
           </div>
           <div class="header-actions">
             <button mat-raised-button color="primary" (click)="addNewTask()" class="add-task-btn">
@@ -44,47 +49,55 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
         </mat-card-header>
         <mat-divider></mat-divider>
         <mat-card-content>
-          <ng-container *ngIf="tasks.length > 0; else noTasks">
-            <div class="tasks-list">
-              <div *ngFor="let task of tasks" class="task-item">
-                <div class="task-header">
-                  <h3>{{task.title}}</h3>
-                  <div class="task-badges">
-                    <mat-chip-set>
-                      <mat-chip [class]="'status-' + task.status">
-                        {{task.status === 'pending' ? 'Pendiente' : 'Completada'}}
-                      </mat-chip>
-                      <mat-chip [class]="'priority-' + task.priority">
-                        {{getPriorityLabel(task.priority)}}
-                      </mat-chip>
-                    </mat-chip-set>
-                  </div>
-                </div>
-                <p class="task-description">{{task.description}}</p>
-                <div class="task-footer">
-                  <div class="task-date">
-                    <mat-icon class="date-icon">calendar_today</mat-icon>
-                    <span>Creada el {{formatDate(task.createdAt)}}</span>
-                  </div>
-                  <div class="task-actions">
-                    <button mat-icon-button color="primary" matTooltip="Editar tarea" (click)="editTask(task)">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" matTooltip="Eliminar tarea" (click)="deleteTask(task)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                </div>
-                <mat-divider></mat-divider>
-              </div>
+          <ng-container *ngIf="isLoading; else content">
+            <div class="loading-container">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p>Cargando tareas...</p>
             </div>
           </ng-container>
-          <ng-template #noTasks>
-            <div class="no-tasks">
-              <mat-icon>assignment</mat-icon>
-              <h2>No hay tareas disponibles</h2>
-              <p>Comienza creando una nueva tarea</p>
-            </div>
+          <ng-template #content>
+            <ng-container *ngIf="tasks.length > 0; else noTasks">
+              <div class="tasks-list">
+                <div *ngFor="let task of tasks" class="task-item">
+                  <div class="task-header">
+                    <h3>{{task.title}}</h3>
+                    <div class="task-badges">
+                      <mat-chip-set>
+                        <mat-chip [class]="'status-' + task.status">
+                          {{task.status === 'pending' ? 'Pendiente' : 'Completada'}}
+                        </mat-chip>
+                        <mat-chip [class]="'priority-' + task.priority">
+                          {{getPriorityLabel(task.priority)}}
+                        </mat-chip>
+                      </mat-chip-set>
+                    </div>
+                  </div>
+                  <p class="task-description">{{task.description}}</p>
+                  <div class="task-footer">
+                    <div class="task-date">
+                      <mat-icon class="date-icon">calendar_today</mat-icon>
+                      <span>Creada el {{formatDate(task.createdAt)}}</span>
+                    </div>
+                    <div class="task-actions">
+                      <button mat-icon-button color="primary" matTooltip="Editar tarea" (click)="editTask(task)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" matTooltip="Eliminar tarea" (click)="deleteTask(task)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <mat-divider></mat-divider>
+                </div>
+              </div>
+            </ng-container>
+            <ng-template #noTasks>
+              <div class="no-tasks">
+                <mat-icon>assignment</mat-icon>
+                <h2>No hay tareas disponibles</h2>
+                <p>Comienza creando una nueva tarea</p>
+              </div>
+            </ng-template>
           </ng-template>
         </mat-card-content>
       </mat-card>
@@ -272,6 +285,17 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
       padding: 1rem;
     }
 
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      width: 40px;
+      height: auto;
+    }
+
     .welcome-message {
       display: flex;
       align-items: center;
@@ -283,11 +307,25 @@ import { EditTaskDialogComponent } from './edit-task-dialog/edit-task-dialog.com
       font-weight: 500;
       color: #333;
     }
+
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: #666;
+    }
+
+    .loading-container p {
+      margin-top: 1rem;
+    }
   `]
 })
 export class TasksComponent implements OnInit {
   tasks: Task[] = [];
   userName: string = '';
+  isLoading: boolean = true;
 
   constructor(
     private taskService: TaskService,
@@ -296,22 +334,38 @@ export class TasksComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.authService.getCurrentUser().subscribe(user => {
-      if (user) {
-        this.userName = `${user.name} ${user.lastName}`;
-        this.loadTasks(user.userId);
+    this.loadUserName();
+  }
+
+  private loadTasks() {
+    this.isLoading = true;
+    this.authService.getCurrentUser().subscribe({
+      next: (user) => {
+        if (user) {
+          this.taskService.getUserTasks(user.userId).subscribe({
+            next: (tasks: Task[]) => {
+              this.tasks = tasks;
+              this.isLoading = false;
+            },
+            error: (error: any) => {
+              console.error('Error loading tasks:', error);
+              this.isLoading = false;
+            }
+          });
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading user:', error);
+        this.isLoading = false;
       }
     });
   }
 
-  loadTasks(userId: string) {
-    this.taskService.getUserTasks(userId).subscribe({
-      next: (tasks) => {
-        this.tasks = tasks;
-      },
-      error: (error) => {
-        console.error('Error loading tasks:', error);
-        this.tasks = [];
+  loadUserName() {
+    this.authService.getCurrentUser().subscribe(user => {
+      if (user) {
+        this.userName = `${user.name} ${user.lastName}`;
+        this.loadTasks();
       }
     });
   }

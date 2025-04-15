@@ -25,6 +25,9 @@ import { AuthService } from '../../services/auth.service';
   ],
   template: `
     <div class="create-user-container">
+      <div class="logo-container">
+        <img src="/assets/logo-atom-chat.png" alt="Atom Logo" class="logo">
+      </div>
       <mat-card class="create-user-card">
         <mat-card-header>
           <mat-card-title>Crear Usuario</mat-card-title>
@@ -75,10 +78,22 @@ import { AuthService } from '../../services/auth.service';
   styles: [`
     .create-user-container {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
+      min-height: 100vh;
       background-color: #f5f5f5;
+      padding: 2rem;
+    }
+
+    .logo-container {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .logo {
+      max-width: 150px;
+      height: auto;
     }
 
     .create-user-card {
