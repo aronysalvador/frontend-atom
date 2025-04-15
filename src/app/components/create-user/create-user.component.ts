@@ -1,0 +1,156 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+
+@Component({
+  selector: 'app-create-user',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatCardModule,
+    MatDatepickerModule,
+    MatNativeDateModule
+  ],
+  template: `
+    <div class="create-user-container">
+      <mat-card class="create-user-card">
+        <mat-card-header>
+          <mat-card-title>Crear Usuario</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="create-user-form">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Correo electrónico</mat-label>
+              <input matInput formControlName="userId" type="email" readonly>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nombre</mat-label>
+              <input matInput formControlName="name" required>
+              <mat-error *ngIf="userForm.get('name')?.hasError('required')">
+                El nombre es requerido
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Apellido</mat-label>
+              <input matInput formControlName="lastName" required>
+              <mat-error *ngIf="userForm.get('lastName')?.hasError('required')">
+                El apellido es requerido
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Fecha de nacimiento</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="dateBirth" required>
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              <mat-error *ngIf="userForm.get('dateBirth')?.hasError('required')">
+                La fecha de nacimiento es requerida
+              </mat-error>
+            </mat-form-field>
+
+            <div class="button-container">
+              <button mat-raised-button color="primary" type="submit" [disabled]="userForm.invalid">
+                Crear Usuario
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  `,
+  styles: [`
+    .create-user-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f5f5f5;
+    }
+
+    .create-user-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 2rem;
+    }
+
+    .create-user-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .full-width {
+      width: 100%;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+  `]
+})
+export class CreateUserComponent {
+  userForm: FormGroup;
+
+  constructor(
+    private fb: FormBuilder,
+    private route: ActivatedRoute,
+    private authService: AuthService
+  ) {
+    this.userForm = this.fb.group({
+      userId: [''],
+      name: ['', Validators.required],
+      lastName: ['', Validators.required],
+      dateBirth: ['', Validators.required]
+    });
+
+    const email = this.authService.getStoredEmail();
+    if (email) {
+      this.userForm.patchValue({ userId: email });
+    }
+  }
+
+  formatDate(date: Date): string {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  onSubmit() {
+    if (this.userForm.valid) {
+      const formValue = this.userForm.value;
+      const userData = {
+        userId: formValue.userId,
+        name: formValue.name,
+        lastName: formValue.lastName,
+        dateBirth: this.formatDate(formValue.dateBirth)
+      };
+
+      this.authService.createUser(userData).subscribe({
+        next: () => {
+          this.authService.navigateToTasks();
+        },
+        error: (error: any) => {
+          console.error('Error creating user:', error);
+        }
+      });
+    }
+  }
+} 
